@@ -37,4 +37,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Rutas para Actas
     Route::resource('actas', ActaController::class);
+    
+    // Rutas para búsqueda de actas
+    Route::get('/actas-search', [ActaController::class, 'search'])->name('actas.search');
+    Route::post('/actas-search', [ActaController::class, 'searchResults'])->name('actas.search.results');
 });

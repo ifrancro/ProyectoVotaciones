@@ -14,7 +14,7 @@
         </div>
     </div>
 
-    <form action="{{ route('actas.store') }}" method="POST" id="voteForm">
+    <form action="{{ route('actas.store') }}" method="POST" id="voteForm" enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="election_id" value="{{ $election->id }}">
         
@@ -89,6 +89,29 @@
                                min="0" 
                                max="240"
                                data-candidate="Blancos">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Foto del Acta -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5><i class="fas fa-camera"></i> Foto del Acta (Opcional)</h5>
+                        <p class="text-muted">Sube una foto del acta de votación para respaldo</p>
+                        <div class="mb-3">
+                            <input type="file" 
+                                   class="form-control" 
+                                   name="acta_photo" 
+                                   accept="image/*"
+                                   id="actaPhoto">
+                            <div class="form-text">Formatos permitidos: JPG, PNG, GIF. Máximo 2MB</div>
+                        </div>
+                        <div id="photoPreview" class="mt-3" style="display: none;">
+                            <img id="previewImage" src="" alt="Vista previa" class="img-fluid rounded" style="max-height: 200px;">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -209,6 +232,12 @@
     border-radius: 10px;
     border: none;
 }
+
+.card {
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: none;
+}
 </style>
 
 <script>
@@ -218,6 +247,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const validationMessage = document.getElementById('validationMessage');
     const submitBtn = document.getElementById('submitBtn');
     const maxVotes = 240;
+    const actaPhotoInput = document.getElementById('actaPhoto');
+    const photoPreview = document.getElementById('photoPreview');
+    const previewImage = document.getElementById('previewImage');
 
     function calculateTotal() {
         let total = 0;
@@ -253,7 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Event listeners para inputs
+    // Event listeners para inputs de votos
     voteInputs.forEach(input => {
         input.addEventListener('input', updateTotal);
         input.addEventListener('change', function() {
@@ -263,6 +295,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             updateTotal();
         });
+    });
+
+    // Preview de foto
+    actaPhotoInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) { // 2MB
+                alert('La imagen es demasiado grande. Máximo 2MB permitido.');
+                this.value = '';
+                photoPreview.style.display = 'none';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                photoPreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            photoPreview.style.display = 'none';
+        }
     });
 
     // Form validation

@@ -7,6 +7,7 @@ use App\Models\Election;
 use App\Models\Candidate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class ActaController extends Controller
 {
@@ -17,6 +18,49 @@ class ActaController extends Controller
     {
         $actas = Acta::with(['election', 'user'])->orderBy('created_at', 'desc')->get();
         return view('actas.index', compact('actas'));
+    }
+
+    /**
+     * Mostrar formulario de búsqueda de actas
+     */
+    public function search()
+    {
+        $elections = Election::where('is_active', true)->get();
+        return view('actas.search', compact('elections'));
+    }
+
+    /**
+     * Realizar búsqueda de actas
+     */
+    public function searchResults(Request $request)
+    {
+        $query = Acta::with(['election', 'user', 'candidateVotes.candidate']);
+
+        // Filtros de búsqueda
+        if ($request->filled('election_id')) {
+            $query->where('election_id', $request->election_id);
+        }
+
+        if ($request->filled('mesa_number')) {
+            $query->where('mesa_number', $request->mesa_number);
+        }
+
+        if ($request->filled('user_name')) {
+            $query->whereHas('user', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->user_name . '%');
+            });
+        }
+
+        if ($request->filled('username')) {
+            $query->whereHas('user', function($q) use ($request) {
+                $q->where('username', 'like', '%' . $request->username . '%');
+            });
+        }
+
+        $actas = $query->orderBy('created_at', 'desc')->get();
+        $elections = Election::where('is_active', true)->get();
+
+        return view('actas.search', compact('actas', 'elections'));
     }
 
     /**
@@ -60,7 +104,8 @@ class ActaController extends Controller
             'blank_votes' => 'required|integer|min:0',
             'observations' => 'nullable|string',
             'candidate_votes' => 'required|array',
-            'candidate_votes.*' => 'integer|min:0'
+            'candidate_votes.*' => 'integer|min:0',
+            'acta_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
         // Calcular total de votos
@@ -74,6 +119,12 @@ class ActaController extends Controller
             return back()->withErrors(['total' => 'El total de votos no puede exceder 240.']);
         }
 
+        // Procesar foto del acta si se subió
+        $photoPath = null;
+        if ($request->hasFile('acta_photo')) {
+            $photoPath = $request->file('acta_photo')->store('actas', 'public');
+        }
+
         // Crear el acta
         $acta = Acta::create([
             'election_id' => $request->election_id,
@@ -82,7 +133,8 @@ class ActaController extends Controller
             'total_votes' => $totalVotes,
             'null_votes' => $request->null_votes,
             'blank_votes' => $request->blank_votes,
-            'observations' => $request->observations
+            'observations' => $request->observations,
+            'photo_path' => $photoPath
         ]);
 
         // Guardar votos por candidato
@@ -152,7 +204,8 @@ class ActaController extends Controller
             'blank_votes' => 'required|integer|min:0',
             'observations' => 'nullable|string',
             'candidate_votes' => 'required|array',
-            'candidate_votes.*' => 'integer|min:0'
+            'candidate_votes.*' => 'integer|min:0',
+            'acta_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
         // Calcular total de votos
@@ -166,12 +219,23 @@ class ActaController extends Controller
             return back()->withErrors(['total' => 'El total de votos no puede exceder 240.']);
         }
 
+        // Procesar foto del acta si se subió
+        $photoPath = $acta->photo_path;
+        if ($request->hasFile('acta_photo')) {
+            // Eliminar foto anterior si existe
+            if ($photoPath && Storage::disk('public')->exists($photoPath)) {
+                Storage::disk('public')->delete($photoPath);
+            }
+            $photoPath = $request->file('acta_photo')->store('actas', 'public');
+        }
+
         // Actualizar el acta
         $acta->update([
             'total_votes' => $totalVotes,
             'null_votes' => $request->null_votes,
             'blank_votes' => $request->blank_votes,
-            'observations' => $request->observations
+            'observations' => $request->observations,
+            'photo_path' => $photoPath
         ]);
 
         // Actualizar votos por candidato
@@ -198,6 +262,11 @@ class ActaController extends Controller
         if ($acta->user_id !== Auth::id()) {
             return redirect()->route('actas.index')
                 ->with('error', 'No tienes permisos para eliminar este acta.');
+        }
+
+        // Eliminar foto si existe
+        if ($acta->photo_path && Storage::disk('public')->exists($acta->photo_path)) {
+            Storage::disk('public')->delete($acta->photo_path);
         }
 
         $acta->delete();

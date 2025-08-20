@@ -17,7 +17,8 @@ class Acta extends Model
         'null_votes',
         'blank_votes',
         'observations',
-        'is_validated'
+        'is_validated',
+        'photo_path'
     ];
 
     protected $casts = [
@@ -62,5 +63,16 @@ class Acta extends Model
     public function isComplete()
     {
         return $this->total_votes === 240;
+    }
+
+    /**
+     * Obtener la URL de la foto del acta
+     */
+    public function getPhotoUrlAttribute()
+    {
+        if ($this->photo_path) {
+            return asset('storage/' . $this->photo_path);
+        }
+        return null;
     }
 }

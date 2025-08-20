@@ -218,6 +218,12 @@
                     Agregar boleta
                 </a>
             </div>
+            <div class="nav-item">
+                <a href="{{ route('actas.search') }}" class="nav-link {{ request()->routeIs('actas.search*') ? 'active' : '' }}">
+                    <i class="fas fa-search"></i>
+                    Buscar Actas
+                </a>
+            </div>
         </div>
         
         <div class="logout-link">
